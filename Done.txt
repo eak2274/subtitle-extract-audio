@@ -1,0 +1,5 @@
+python extract_audio.py "D:\Downloads\Рикошет.(2019).WEBRip.Files-x" -o audio
+
+python extract_audio.py "D:\Downloads\Dengi.2016.WEB-DLRip.RG.Russkie.serialy.&.Files-x" -o audio
+
+python extract_audio.py "D:/111" -o audio
