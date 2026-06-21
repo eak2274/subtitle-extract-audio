@@ -62,10 +62,15 @@ Requirements:
 
 import argparse
 import logging
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
+
+
+DEFAULT_FFMPEG_PATH = Path(r"C:\Tools\ffmpeg-8.1.1-essentials_build\bin\ffmpeg.exe")
 
 
 def setup_logging() -> logging.Logger:
@@ -112,26 +117,48 @@ def setup_logging() -> logging.Logger:
     return logger
 
 
-def check_ffmpeg() -> bool:
+def find_ffmpeg() -> str | None:
     """
-    Check if ffmpeg is installed and available in PATH.
+    Find ffmpeg executable from FFMPEG_BINARY, PATH, or the local Windows tools path.
+    """
+    env_binary = os.environ.get("FFMPEG_BINARY")
+    if env_binary and Path(env_binary).is_file():
+        return env_binary
+
+    path_binary = shutil.which("ffmpeg")
+    if path_binary:
+        return path_binary
+
+    if DEFAULT_FFMPEG_PATH.is_file():
+        return str(DEFAULT_FFMPEG_PATH)
+
+    return None
+
+
+def check_ffmpeg() -> str | None:
+    """
+    Check if ffmpeg is installed and usable.
     
     Returns:
-        True if ffmpeg is available, False otherwise
+        Path to ffmpeg executable if available, otherwise None
     """
+    ffmpeg_binary = find_ffmpeg()
+    if not ffmpeg_binary:
+        return None
+
     try:
         subprocess.run(
-            ['ffmpeg', '-version'],
+            [ffmpeg_binary, '-version'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True
         )
-        return True
+        return ffmpeg_binary
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+        return None
 
 
-def extract_audio(video_path: Path, audio_path: Path, logger: logging.Logger) -> None:
+def extract_audio(video_path: Path, audio_path: Path, ffmpeg_binary: str, logger: logging.Logger) -> None:
     """
     Extract audio from video file using ffmpeg.
     
@@ -154,7 +181,7 @@ def extract_audio(video_path: Path, audio_path: Path, logger: logging.Logger) ->
     # -ar 16000: 16 kHz sample rate
     # -ac 1: mono (1 channel)
     cmd = [
-        'ffmpeg',
+        ffmpeg_binary,
         '-i', str(video_path),
         '-vn',  # no video
         '-acodec', 'pcm_s16le',  # WAV codec
@@ -179,7 +206,7 @@ def extract_audio(video_path: Path, audio_path: Path, logger: logging.Logger) ->
         raise
 
 
-def process_videos(input_dir: Path, output_dir: Path, logger: logging.Logger) -> None:
+def process_videos(input_dir: Path, output_dir: Path, ffmpeg_binary: str, logger: logging.Logger) -> None:
     """
     Process all video files in the specified directory.
     
@@ -224,7 +251,7 @@ def process_videos(input_dir: Path, output_dir: Path, logger: logging.Logger) ->
             continue
         
         # Extract audio
-        extract_audio(video_file, audio_file, logger)
+        extract_audio(video_file, audio_file, ffmpeg_binary, logger)
         processed += 1
     
     logger.info("-" * 60)
@@ -272,11 +299,12 @@ Examples:
     
     # Check for ffmpeg
     logger.info("Checking for ffmpeg...")
-    if not check_ffmpeg():
+    ffmpeg_binary = check_ffmpeg()
+    if not ffmpeg_binary:
         logger.error("✗ ffmpeg not found in system!")
         logger.error("Install ffmpeg: https://ffmpeg.org/download.html")
         sys.exit(1)
-    logger.info("✓ ffmpeg found")
+    logger.info(f"ffmpeg found: {ffmpeg_binary}")
     
     # Validate input directory
     input_dir = Path(args.input_dir)
@@ -295,7 +323,7 @@ Examples:
     
     # Process video files
     try:
-        process_videos(input_dir, output_dir, logger)
+        process_videos(input_dir, output_dir, ffmpeg_binary, logger)
     except Exception as e:
         logger.error(f"✗ Critical error: {e}")
         logger.exception("Traceback:")

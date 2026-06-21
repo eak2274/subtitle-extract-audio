@@ -2,4 +2,4 @@ python extract_audio.py "D:\Downloads\Рикошет.(2019).WEBRip.Files-x" -o a
 
 python extract_audio.py "D:\Downloads\Dengi.2016.WEB-DLRip.RG.Russkie.serialy.&.Files-x" -o audio
 
-python extract_audio.py "D:/111" -o audio
+uv run extract_audio.py "C:\Downloads\Pervaya.raketka.S01.2026.WEB-DL.720p.ExKinoRay" -o audio
